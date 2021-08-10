@@ -2,4 +2,5 @@
   "window.zoomLevel": 0,
   "editor.tabSize": 2,
   "editor.detectIndentation": false,
+  "git.ignoreLimitWarning": true
 }
