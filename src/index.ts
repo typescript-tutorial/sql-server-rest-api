@@ -17,7 +17,7 @@ app.use(json());
 export const db = new sql.ConnectionPool({
   user: 'sa',
   password: '123456',
-  server: '100.114.203.235',
+  server: '100.111.185.80',
   database: 'masterdata',
   port: 1466,
   pool: {
@@ -40,4 +40,6 @@ db.connect().then(() =>{
     console.log('Start server at port ' + port);
   });
   console.log('Connect SQL Server Successful!!!')
-})
+}).catch(e => {
+  console.error('Failed to connect to SQL Server.', e.message, e.stack);
+});

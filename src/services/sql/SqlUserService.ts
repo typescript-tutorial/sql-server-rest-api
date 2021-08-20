@@ -29,7 +29,11 @@ export class SqlUserService implements UserService {
     return queryOne(this.db, 'select * from users where id = @0', [id]);
   }
   insert(user: User): Promise<number> {
-    return exec(this.db, `insert into users (id, username, email, phone, dateOfBirth) values (@0, @1, @2, @3, @4)`,
+    const upSert = `if exists (select * from users where id = @0)
+    update users set username = @1, email = @2, phone = @3, dateOfBirth = @4 
+    else
+    insert into users (id, username, email, phone, dateOfBirth) values (@0, @1, @2, @3, @4)`;
+    return exec(this.db, upSert,
      [user.id, user.username, user.email, user.phone, user.dateOfBirth]);
   }
   insertMany(users: User[]): Promise<number> {

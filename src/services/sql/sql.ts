@@ -14,8 +14,8 @@ export class PoolManager implements Manager {
   exec(sql: string, args?: any[]): Promise<number> {
     return exec(this.db, sql, args);
   }
-  execBatch(statements: Statement[]): Promise<number> {
-    return execBatch(this.db, statements);
+  execBatch(statements: Statement[], firstSuccess?: boolean): Promise<number> {
+    return execBatch(this.db, statements, firstSuccess);
   }
   query<T>(sql: string, args?: any[], m?: StringMap, fields?: Attribute[]): Promise<T[]> {
     return query(this.db, sql, args, m, fields);
@@ -30,32 +30,28 @@ export class PoolManager implements Manager {
     return count(this.db, sql, args);
   }
 }
-// export function execute(db: sql.ConnectionPool, sql: string): Promise<void> {
-//   return new Promise<void>((resolve, reject) => {
-//     return db.exec(sql, (err: any) => {
-//       if (err) {
-//         return reject(err);
-//       } else {
-//         return resolve();
-//       }
-//     });
-//   });
-// }
-export async function execBatch(db: sql.ConnectionPool, statements?: Statement[]): Promise<number> {
+export async function execBatch(db: sql.ConnectionPool, statements: Statement[], firstSuccess?: boolean): Promise<number> {
+  if (!statements || statements.length === 0) {
+    return Promise.resolve(0);
+  } else if (statements.length === 1) {
+    return exec(db, statements[0].query, statements[0].args);
+  } 
+  let c = 0;
   const transaction = new sql.Transaction(db);
   try{
     const request = new sql.Request(transaction);
     await transaction.begin();
-     for(let item of statements)
+      for(let item of statements)
     {
       request.parameters = {}
       item.args.forEach((item, i) => {
         request.input(`${i}`, item)
-      })
-      await request.query(item.query);
+      });
+      const result = await request.query(item.query);
+      c+= result.rowsAffected[0];
     }
     await transaction.commit();
-    return 1;
+    return c;
   }
   catch(err) {
     await transaction.rollback();
