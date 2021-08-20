@@ -30,7 +30,7 @@ export class SqlUserService implements UserService {
   }
   insert(user: User): Promise<number> {
     const upSert = `if exists (select * from users where id = @0)
-    update users set username = @1, email = @2, phone = @3, dateOfBirth = @4 
+    update users set username = @1, email = @2, phone = @3, dateOfBirth = @4 where id = @0
     else
     insert into users (id, username, email, phone, dateOfBirth) values (@0, @1, @2, @3, @4)`;
     return exec(this.db, upSert,
