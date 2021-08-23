@@ -38,24 +38,60 @@ export async function execBatch(db: sql.ConnectionPool, statements: Statement[],
   } 
   let c = 0;
   const transaction = new sql.Transaction(db);
-  try{
-    const request = new sql.Request(transaction);
-    await transaction.begin();
-      for(let item of statements)
-    {
-      request.parameters = {}
-      item.args.forEach((item, i) => {
-        request.input(`${i}`, item)
-      });
-      const result = await request.query(item.query);
-      c+= result.rowsAffected[0];
+  if(firstSuccess){
+    try{
+      let query1 = statements.slice(0,1);
+      let queries = statements.slice(1);
+      const request = new sql.Request(transaction);
+      await transaction.begin();
+        for(let item of query1)
+      {
+        request.parameters = {}
+        item.args.forEach((item, i) => {
+          request.input(`${i}`, item)
+        });
+        const result1 = await request.query(item.query);
+        if(result1 && result1.rowsAffected[0] !== 0){
+          c+= result1.rowsAffected[0];
+          for(let item of queries)
+          {
+            request.parameters = {}
+            item.args.forEach((item, i) => {
+              request.input(`${i}`, item);
+            });
+            const result = await request.query(item.query);
+            c+= result.rowsAffected[0];
+          }
+        }
+      }
+      await transaction.commit();
+      return c;
     }
-    await transaction.commit();
-    return c;
+    catch(err) {
+      await transaction.rollback();
+      return err;
+    }
   }
-  catch(err) {
-    await transaction.rollback();
-    return err;
+  else{
+    try{
+      const request = new sql.Request(transaction);
+      await transaction.begin();
+        for(let item of statements)
+      {
+        request.parameters = {}
+        item.args.forEach((item, i) => {
+          request.input(`${i}`, item)
+        });
+        const result = await request.query(item.query);
+        c+= result.rowsAffected[0];
+      }
+      await transaction.commit();
+      return c;
+    }
+    catch(err) {
+      await transaction.rollback();
+      return err;
+    }
   }
 }
 export function exec(db: sql.ConnectionPool, sql: string, args?: any[]): Promise<number> {

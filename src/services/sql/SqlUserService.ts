@@ -44,7 +44,7 @@ export class SqlUserService implements UserService {
         args: [item.id, item.username, item.email, item.dateOfBirth]
       }
     });
-    return execBatch(this.db, data);
+    return execBatch(this.db, data, true);
   }
   update(user: User): Promise<number> {
     return exec(this.db, `update users set username=@1, email=@2, phone=@3, dateOfBirth=@4 where id = @0`,
