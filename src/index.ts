@@ -17,7 +17,7 @@ app.use(json());
 export const db = new sql.ConnectionPool({
   user: 'sa',
   password: '123456',
-  server: '100.112.8.47',
+  server: '100.111.180.232',
   database: 'masterdata',
   port: 1466,
   pool: {

@@ -39,7 +39,7 @@ export async function execBatch(db: sql.ConnectionPool, statements: Statement[],
     return Promise.resolve(0);
   } else if (statements.length === 1) {
     return exec(db, statements[0].query, statements[0].params);
-  }
+  }  
   let c = 0;
   const transaction = new sql.Transaction(db);
   if (firstSuccess) {
@@ -71,7 +71,7 @@ export async function execBatch(db: sql.ConnectionPool, statements: Statement[],
       const request = new sql.Request(transaction);
       await transaction.begin();
       for (const item of statements) {
-        request.parameters = {};
+        request.parameters = {};   
         setParameters(request, item.params);
         const result = await request.query(item.query);
         c += result.rowsAffected[0];
