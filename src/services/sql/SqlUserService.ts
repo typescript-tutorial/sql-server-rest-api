@@ -44,7 +44,7 @@ export class SqlUserService implements UserService {
     // USING (SELECT @0 AS ID, @1 as USERNAME, @2 as EMAIL, @3 as PHONE, @4 as DATEOFBIRTH ) AS new_user
     // ON f.id = new_user.ID
     // WHEN MATCHED THEN
-    //   UPDATE SET 
+    //   UPDATE SET
     //   f.username = new_user.USERNAME,
     //   f.email = new_user.EMAIL,
     //   f.phone = new_user.PHONE,
@@ -58,17 +58,17 @@ export class SqlUserService implements UserService {
       {'id': 'ironman', 'username': 'tony.stark', 'email': 'tony.stark@gmail.com', 'phone': null, 'dateOfBirth': new Date('1963-03-25T00:00:00+07:00'), age: 1, active: true, version: 2},
       {'id': 'spiderman', 'username': 'peter.parker', 'email': null, 'phone': '0987654321', 'dateOfBirth': new Date('1962-08-25T00:00:00+07:00'), age: 15, active: false, version: 1},
       {'id': 'wolverine', 'username': 'james.howlett', 'email': 'james.howlett@gmail.com', 'phone': '0987654321', 'dateOfBirth': new Date('1974-11-16T00:00:00+07:00'), age: 20, active: true}
-    ]; 
+    ];
     const x = buildToSaveBatch(arr, 'users', userModel.attributes);
     return execBatch(this.db, x);
   }
   insertMany(users: User[]): Promise<number> {
-    const query = `insert into users (id, username, email, dateOfBirth) values (@1, @2, @3, @4)`;
-    let data: Statement[] = users.map(item => {
+    const q = `insert into users (id, username, email, dateOfBirth) values (@1, @2, @3, @4)`;
+    const data: Statement[] = users.map(item => {
       return {
-        query,
+        query: q,
         params: [item.id, item.username, item.email, item.dateOfBirth]
-      }
+      };
     });
     return execBatch(this.db, data, true);
   }

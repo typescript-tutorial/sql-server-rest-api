@@ -39,7 +39,7 @@ export async function execBatch(db: sql.ConnectionPool, statements: Statement[],
     return Promise.resolve(0);
   } else if (statements.length === 1) {
     return exec(db, statements[0].query, statements[0].params);
-  }  
+  }
   let c = 0;
   const transaction = new sql.Transaction(db);
   if (firstSuccess) {
@@ -63,15 +63,16 @@ export async function execBatch(db: sql.ConnectionPool, statements: Statement[],
       await transaction.commit();
       return c;
     } catch (err) {
+      buildError(err);
       await transaction.rollback();
-      return err;
+      throw err;
     }
   } else {
     try {
       const request = new sql.Request(transaction);
       await transaction.begin();
       for (const item of statements) {
-        request.parameters = {};   
+        request.parameters = {};
         setParameters(request, item.params);
         const result = await request.query(item.query);
         c += result.rowsAffected[0];
@@ -80,29 +81,50 @@ export async function execBatch(db: sql.ConnectionPool, statements: Statement[],
       return c;
     } catch (err) {
       await transaction.rollback();
-      return err;
+      throw err;
     }
   }
+}
+function buildError(err: any): any {
+  if (err.originalError && err.originalError.info) {
+    const info = err.originalError.info;
+    const m = info.message;
+    if (m && typeof m === 'string' && m.startsWith('Violation of PRIMARY KEY constraint')) {
+      err.error = 'duplicate';
+    }
+  }
+  return err;
 }
 export function exec(db: sql.ConnectionPool, q: string, args?: any[]): Promise<number> {
   const request = db.request();
   setParameters(request, args);
   return request.query(q)
     .then(results => results.rowsAffected[0])
-    .catch(err => err);
+    .catch(err => {
+      buildError(err);
+      throw err;
+    });
 }
 export function query<T>(db: sql.ConnectionPool, q: string, args?: any[], m?: StringMap, bools?: Attribute[]): Promise<T[]> {
   const request = db.request();
   setParameters(request, args);
   return request.query(q)
-    .then(results => results.recordset)
-    .catch(err => err);
+    .then(results => {
+      return handleResults(results.recordset, m, bools);
+    });
 }
 
 export function queryOne<T>(db: sql.ConnectionPool, q: string, args?: any[], m?: StringMap, bools?: Attribute[]): Promise<T> {
   return query<T[]>(db, q, args, m, bools)
-    .then(results => results[0])
-    .catch(err => err);
+    .then(results => {
+      if (results && results.length > 0) {
+        return results[0] as any;
+      } else {
+        return null;
+      }
+    }).catch(err => {
+      throw err;
+    });
 }
 export function execScalar<T>(db: sql.ConnectionPool, q: string, args?: any[]): Promise<T> {
   return queryOne<T>(db, q, args).then(r => {
@@ -224,15 +246,15 @@ export function handleBool<T>(objs: T[], bools: Attribute[]): T[] {
   }
   for (const obj of objs) {
     for (const field of bools) {
-      const value = obj[field.name];
-      if (value != null && value !== undefined) {
+      const v = obj[field.name];
+      if (typeof v !== 'boolean' && v != null && v !== undefined) {
         const b = field.true;
         if (b == null || b === undefined) {
           // tslint:disable-next-line:triple-equals
-          obj[field.name] = ('1' == value || 'T' == value || 'Y' == value);
+          obj[field.name] = ('1' == v || 'T' == v || 'Y' == v || 'ON' == v);
         } else {
           // tslint:disable-next-line:triple-equals
-          obj[field.name] = (value == b ? true : false);
+          obj[field.name] = (v == b ? true : false);
         }
       }
     }
@@ -327,32 +349,6 @@ export function getMapField(name: string, mp?: StringMap): string {
 export function isEmpty(s: string): boolean {
   return !(s && s.length > 0);
 }
-// tslint:disable-next-line:max-classes-per-file
-export class StringService {
-  constructor(public db: sql.ConnectionPool, public table: string, public column: string) {
-    this.load = this.load.bind(this);
-    this.save = this.save.bind(this);
-  }
-  load(key: string, max: number): Promise<string[]> {
-    const s = `select ${this.column} from ${this.table} where ${this.column} like @1 order by ${this.column} limit ${max}`;
-    return query(this.db, s, ['' + key + '%']).then(arr => {
-      return arr.map(i => i[this.column] as string);
-    });
-  }
-  save(values: string[]): Promise<number> {
-    if (!values || values.length === 0) {
-      return Promise.resolve(0);
-    }
-    const arr: string[] = [];
-    for (let i = 1; i <= values.length; i++) {
-      arr.push('($' + i + ')');
-      i++;
-    }
-    const s = `insert or ignore into ${this.table}(${this.column})values${arr.join(',')}`;
-    return exec(this.db, s, values);
-  }
-}
-
 export function version(attrs: Attributes): Attribute {
   const ks = Object.keys(attrs);
   for (const k of ks) {
